@@ -62,15 +62,15 @@ def fetch_fair_value_data():
         "days_to_expiry": days_to_expiry
     }
 
+@app.get("/")
+def home():
+    return {"message": "FastAPI is running!"}
+
 @app.get("/fetch-data")
 def get_fair_value_data():
         """ API 端點：自動從 IndexArb 獲取數據 """
     return fetch_fair_value_data()
 
-        
-@app.get("/")
-def home():
-    return {"message": "FastAPI is running!"}
     
 @app.get("/calculate-fair-value")
 def calculate_fair_value():
