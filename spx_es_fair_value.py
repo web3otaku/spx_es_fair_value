@@ -15,15 +15,20 @@ def fetch_fair_value_data():
 
     soup = BeautifulSoup(response.text, "html.parser")
 
-    # **列印 HTML 來檢查是否有正確抓取**
-    print(soup.prettify())
+    # **列印所有表格內容**
+    tables = soup.find_all("table")
+    print(f"找到 {len(tables)} 個表格")
 
-    # **嘗試用特定 class 或 id 找到正確的表格**
-    data_table = soup.find("table", {"class": "some-class"})  # 這裡的 class 需要手動檢查
+    # **列印每個表格的內容，幫助 Debug**
+    for i, table in enumerate(tables):
+        print(f"表格 {i}: {table.text[:200]}")  # 只列印前 200 個字，避免 log 太長
 
-    # **如果找不到，回傳錯誤**
-    if not data_table:
+    # **確認是否有目標表格**
+    if len(tables) < 2:
         return {"error": "找不到正確的數據表格，網站可能已經變更結構"}
+
+    # **嘗試抓取正確的表格**
+    data_table = tables[1]  # 假設目標表格是第二個，這裡可能需要調整
 
     rows = data_table.find_all("tr")
 
@@ -38,7 +43,7 @@ def fetch_fair_value_data():
         except ValueError:
             return 0.0
 
-    # **新增 print() 來查看 row 內容**
+    # **列印所有行內容**
     for i, row in enumerate(rows):
         print(f"Row {i}: {[td.text.strip() for td in row.find_all('td')]}")
 
@@ -56,16 +61,17 @@ def fetch_fair_value_data():
         "expected_dividends": expected_dividends,
         "days_to_expiry": days_to_expiry
     }
+
+@app.get("/fetch-data")
+def get_fair_value_data():
+        """ API 端點：自動從 IndexArb 獲取數據 """
+    return fetch_fair_value_data()
+
         
 @app.get("/")
 def home():
     return {"message": "FastAPI is running!"}
-
-@app.get("/fetch-data")
-def get_fair_value_data():
-    """ API 端點：自動從 IndexArb 獲取數據 """
-    return fetch_fair_value_data()
-
+    
 @app.get("/calculate-fair-value")
 def calculate_fair_value():
     """ 使用自動爬取的數據來計算 SPX 與 ES 的合理價差 """
