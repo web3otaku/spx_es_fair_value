@@ -11,18 +11,28 @@ def fetch_fair_value_data():
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
-        return {"error": "無法取得資料"}
+        return {"error": "無法取得資料，請稍後再試"}
 
     soup = BeautifulSoup(response.text, "html.parser")
+    
+    # 確保網頁內有表格
+    tables = soup.find_all("table")
+    if len(tables) < 2:
+        return {"error": "找不到正確的數據表格，網站可能已經變更結構"}
 
     try:
-        data_table = soup.find_all("table")[1]  # 找到第二個表格 (Fair Value Decomposition)
+        data_table = tables[1]  # 取第二個表格 (Fair Value Decomposition)
         rows = data_table.find_all("tr")
+        
+        # 確保表格行數正確
+        if len(rows) < 6:
+            return {"error": "表格數據異常，可能是網站更新導致的變更"}
 
         def safe_float(value):
-            """ 如果數據為空，回傳 0.0，否則轉換為 float """
+            """ 轉換數值，遇到空值時回傳 0.0，避免 API 崩潰 """
             try:
-                return float(value.strip().replace("%", "")) if value.strip() else 0.0
+                clean_value = value.strip().replace("%", "").replace(",", "")
+                return float(clean_value) if clean_value else 0.0
             except ValueError:
                 return 0.0
 
@@ -30,7 +40,10 @@ def fetch_fair_value_data():
         es_price = safe_float(rows[2].find_all("td")[1].text)
         interest_rate = safe_float(rows[3].find_all("td")[1].text) / 100  # 轉換成小數
         expected_dividends = safe_float(rows[4].find_all("td")[1].text)
-        days_to_expiry = int(rows[5].find_all("td")[1].text.strip()) if rows[5].find_all("td")[1].text.strip().isdigit() else 0
+
+        # 確保 `days_to_expiry` 是有效數字
+        days_to_expiry_text = rows[5].find_all("td")[1].text.strip()
+        days_to_expiry = int(days_to_expiry_text) if days_to_expiry_text.isdigit() else 0
 
         return {
             "spx_price": spx_price,
@@ -41,8 +54,7 @@ def fetch_fair_value_data():
         }
 
     except Exception as e:
-        return {"error": f"解析數據時發生錯誤: {e}"}
-
+        return {"error": f"解析數據時發生錯誤: {str(e)}"}
 
 @app.get("/")
 def home():
