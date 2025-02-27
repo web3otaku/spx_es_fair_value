@@ -15,50 +15,47 @@ def fetch_fair_value_data():
 
     soup = BeautifulSoup(response.text, "html.parser")
 
-    # **新增這一行，查看 HTML 內容**
+    # **列印 HTML 來檢查是否有正確抓取**
     print(soup.prettify())
 
-    # 確保網頁內有表格
-    tables = soup.find_all("table")
-    if len(tables) < 2:
+    # **嘗試用特定 class 或 id 找到正確的表格**
+    data_table = soup.find("table", {"class": "some-class"})  # 這裡的 class 需要手動檢查
+
+    # **如果找不到，回傳錯誤**
+    if not data_table:
         return {"error": "找不到正確的數據表格，網站可能已經變更結構"}
 
-    try:
-        data_table = tables[1]  # 取第二個表格 (Fair Value Decomposition)
-        rows = data_table.find_all("tr")
+    rows = data_table.find_all("tr")
 
-        if len(rows) < 6:
-            return {"error": "表格數據異常，可能是網站更新導致的變更"}
+    if len(rows) < 6:
+        return {"error": "表格數據異常，可能是網站更新導致的變更"}
 
-        def safe_float(value):
-            """ 轉換數值，遇到空值時回傳 0.0，避免 API 崩潰 """
-            try:
-                clean_value = value.strip().replace("%", "").replace(",", "")
-                return float(clean_value) if clean_value else 0.0
-            except ValueError:
-                return 0.0
+    def safe_float(value):
+        """ 轉換數值，遇到空值時回傳 0.0，避免 API 崩潰 """
+        try:
+            clean_value = value.strip().replace("%", "").replace(",", "")
+            return float(clean_value) if clean_value else 0.0
+        except ValueError:
+            return 0.0
 
-        # **新增 print() 來查看 row 內容**
-        for i, row in enumerate(rows):
-            print(f"Row {i}: {[td.text.strip() for td in row.find_all('td')]}")
+    # **新增 print() 來查看 row 內容**
+    for i, row in enumerate(rows):
+        print(f"Row {i}: {[td.text.strip() for td in row.find_all('td')]}")
 
-        spx_price = safe_float(rows[1].find_all("td")[1].text)
-        es_price = safe_float(rows[2].find_all("td")[1].text)
-        interest_rate = safe_float(rows[3].find_all("td")[1].text) / 100
-        expected_dividends = safe_float(rows[4].find_all("td")[1].text)
-        days_to_expiry_text = rows[5].find_all("td")[1].text.strip()
-        days_to_expiry = int(days_to_expiry_text) if days_to_expiry_text.isdigit() else 0
+    spx_price = safe_float(rows[1].find_all("td")[1].text)
+    es_price = safe_float(rows[2].find_all("td")[1].text)
+    interest_rate = safe_float(rows[3].find_all("td")[1].text) / 100
+    expected_dividends = safe_float(rows[4].find_all("td")[1].text)
+    days_to_expiry_text = rows[5].find_all("td")[1].text.strip()
+    days_to_expiry = int(days_to_expiry_text) if days_to_expiry_text.isdigit() else 0
 
-        return {
-            "spx_price": spx_price,
-            "es_price": es_price,
-            "interest_rate": interest_rate,
-            "expected_dividends": expected_dividends,
-            "days_to_expiry": days_to_expiry
-        }
-
-    except Exception as e:
-        return {"error": f"解析數據時發生錯誤: {str(e)}"}
+    return {
+        "spx_price": spx_price,
+        "es_price": es_price,
+        "interest_rate": interest_rate,
+        "expected_dividends": expected_dividends,
+        "days_to_expiry": days_to_expiry
+    }
         
 @app.get("/")
 def home():
