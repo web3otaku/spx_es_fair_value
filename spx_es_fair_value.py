@@ -35,6 +35,10 @@ def fetch_fair_value_data():
     except Exception as e:
         return {"error": f"解析數據時發生錯誤: {e}"}
 
+@app.get("/")
+def home():
+    return {"message": "FastAPI is running!"}
+
 @app.get("/fetch-data")
 def get_fair_value_data():
     """ API 端點：自動從 IndexArb 獲取數據 """
