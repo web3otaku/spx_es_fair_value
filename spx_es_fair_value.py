@@ -1,6 +1,6 @@
-from fastapi import FastAPI
 import requests
 from bs4 import BeautifulSoup
+from fastapi import FastAPI
 
 app = FastAPI()
 
@@ -14,7 +14,10 @@ def fetch_fair_value_data():
         return {"error": "無法取得資料，請稍後再試"}
 
     soup = BeautifulSoup(response.text, "html.parser")
-    
+
+    # **新增這一行，查看 HTML 內容**
+    print(soup.prettify())
+
     # 確保網頁內有表格
     tables = soup.find_all("table")
     if len(tables) < 2:
@@ -23,8 +26,7 @@ def fetch_fair_value_data():
     try:
         data_table = tables[1]  # 取第二個表格 (Fair Value Decomposition)
         rows = data_table.find_all("tr")
-        
-        # 確保表格行數正確
+
         if len(rows) < 6:
             return {"error": "表格數據異常，可能是網站更新導致的變更"}
 
@@ -36,12 +38,14 @@ def fetch_fair_value_data():
             except ValueError:
                 return 0.0
 
+        # **新增 print() 來查看 row 內容**
+        for i, row in enumerate(rows):
+            print(f"Row {i}: {[td.text.strip() for td in row.find_all('td')]}")
+
         spx_price = safe_float(rows[1].find_all("td")[1].text)
         es_price = safe_float(rows[2].find_all("td")[1].text)
-        interest_rate = safe_float(rows[3].find_all("td")[1].text) / 100  # 轉換成小數
+        interest_rate = safe_float(rows[3].find_all("td")[1].text) / 100
         expected_dividends = safe_float(rows[4].find_all("td")[1].text)
-
-        # 確保 `days_to_expiry` 是有效數字
         days_to_expiry_text = rows[5].find_all("td")[1].text.strip()
         days_to_expiry = int(days_to_expiry_text) if days_to_expiry_text.isdigit() else 0
 
@@ -55,7 +59,7 @@ def fetch_fair_value_data():
 
     except Exception as e:
         return {"error": f"解析數據時發生錯誤: {str(e)}"}
-
+        
 @app.get("/")
 def home():
     return {"message": "FastAPI is running!"}
